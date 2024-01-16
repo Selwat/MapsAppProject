@@ -63,33 +63,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
-                locationResult.lastLocation?.let { location ->
-                    // Aktualizuj mapę z nową lokalizacją
-                    updateMapLocation(LatLng(location.latitude, location.longitude))
+                locationResult.lastLocation?.let {
+                    val newLatLng = LatLng(it.latitude, it.longitude)
 
-                    // Twój kod dla dodawania markerów, sprawdzania potworów, i wyświetlania powiadomienia
-                    val nearbyPoints = mutableListOf<LatLng>()
-                    repeat(10) {
-                        val randomLocation =
-                            generateRandomLocationNearby(
-                                LatLng(location.latitude, location.longitude),
-                                500.0
-                            )
-                        mGoogleMap?.addMarker(MarkerOptions().position(randomLocation).title("Point $it"))
-                        val distance =
-                            calculateDistance(
-                                LatLng(location.latitude, location.longitude),
-                                randomLocation
-                            )
-                        if (distance < 600) {
-                            nearbyPoints.add(randomLocation)
-                        }
+                    // Usuń tylko marker użytkownika z mapy
+                    markers.firstOrNull { marker -> marker.title == "My Location" }?.remove()
+                    markers.removeAll { marker -> marker.title == "My Location" }
+
+                    // Dodaj nowy marker użytkownika
+                    val marker = mGoogleMap?.addMarker(MarkerOptions().position(newLatLng).title("My Location"))
+                    marker?.let {
+                        markers.add(marker)
                     }
 
-                    showConfirmationDialog(nearbyPoints.size)
+                    // Aktualizuj mapę z nową lokalizacją
+                    updateMapLocation(newLatLng)
                 }
             }
         }
+
 
         // Rozpocznij aktualizacje lokalizacji
         startLocationUpdates()
@@ -107,7 +99,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
                     val currentLatLng = LatLng(location.latitude, location.longitude)
-
                     mGoogleMap?.addMarker(MarkerOptions().position(currentLatLng).title("My Location"))
                     mGoogleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
 
@@ -129,8 +120,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun updateMapLocation(latLng: LatLng) {
-        // Aktualizuj mapę z nową lokalizacją
-        mGoogleMap?.clear()  // Wyczyść mapę przed dodaniem nowych markerów
+        // Aktualizuj mapę z nową lokalizac
         mGoogleMap?.addMarker(MarkerOptions().position(latLng).title("My Location"))
         mGoogleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
     }
@@ -141,6 +131,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
+
         ) {
             // Włącz aktualizacje lokalizacji
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
@@ -156,8 +147,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun generateRandomLocationNearby(center: LatLng, radius: Double): LatLng {
         val random = Random.Default
-        val lat = center.latitude + (random.nextDouble() * 2 - 1) * (radius / 111000.0)
-        val lng = center.longitude + (random.nextDouble() * 2 - 1) * (radius / (111000.0 * cos(
+        val lat = center.latitude + (random.nextDouble() * 2 - 1) * (radius / 51000.0)
+        val lng = center.longitude + (random.nextDouble() * 2 - 1) * (radius / (51000.0 * cos(
             Math.toRadians(center.latitude)
         )))
         return LatLng(lat, lng)
@@ -167,15 +158,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         repeat(10) {
             val randomLocation = generateRandomLocationNearby(center, 500.0)
-            mGoogleMap?.addMarker(MarkerOptions().position(randomLocation).title("Point $it"))
+            val marker = mGoogleMap?.addMarker(MarkerOptions().position(randomLocation).title("Point $it"))
+            marker?.let {
+                markers.add(marker)
+            }
             val distance = calculateDistance(center, randomLocation)
             if (distance < 600) {
                 nearbyPoints.add(randomLocation)
             }
         }
-
-        showConfirmationDialog(nearbyPoints.size)
     }
+
 
     private fun calculateDistance(location1: LatLng, location2: LatLng): Float {
         val results = FloatArray(1)
@@ -213,7 +206,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
                     val nearbyMonsters = markers.count { marker ->
                         val distance = calculateDistance(currentLatLng, marker.position)
-                        distance < 100
+                        distance < 600
                     }
 
                     runOnUiThread {
