@@ -1,8 +1,11 @@
 package com.example.mapsapp
 
 import android.Manifest
+import android.content.Context
+import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.os.Bundle
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -40,10 +43,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED
         ) {
-            // Jeżeli masz uprawnienia do lokalizacji, ustaw aktualną lokalizację użytkownika na mapie
             setMyLocation()
         } else {
-            // Jeżeli nie masz uprawnień, poproś użytkownika o nie
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
@@ -53,7 +54,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun setMyLocation() {
-        // Uzyskaj aktualną lokalizację użytkownika
         if (ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -62,44 +62,66 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             return
         }
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
                 val currentLatLng = LatLng(location.latitude, location.longitude)
 
-                // Ustaw marker na aktualnej lokalizacji użytkownika
                 mGoogleMap?.addMarker(MarkerOptions().position(currentLatLng).title("My Location"))
-
-                // Przesuń kamerę na aktualną lokalizację użytkownika
                 mGoogleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
 
-                // Dodaj 10 losowych markerów w odległości 1 km od aktualnej lokalizacji użytkownika
+                val nearbyPoints = mutableListOf<LatLng>()
+
                 repeat(10) {
                     val randomLocation =
-                        generateRandomLocationNearby(currentLatLng, 1000.0) // Odległość w metrach
+                        generateRandomLocationNearby(currentLatLng, 500.0)
                     mGoogleMap?.addMarker(
                         MarkerOptions().position(randomLocation).title("Point $it")
                     )
+
+                    // Sprawdź odległość od wylosowanego punktu
+                    val distance = calculateDistance(currentLatLng, randomLocation)
+                    if (distance < 600) {
+                        nearbyPoints.add(randomLocation)
+                    }
                 }
+
+                showConfirmationDialog(nearbyPoints.size)
             }
         }
     }
 
-    // Funkcja do generowania losowych współrzędnych w odległości od danej lokalizacji
     private fun generateRandomLocationNearby(center: LatLng, radius: Double): LatLng {
         val random = Random.Default
-        val lat = center.latitude + (random.nextDouble() * 2 - 1) * (radius / 20111.0)
-        val lng = center.longitude + (random.nextDouble() * 2 - 1) * (radius / (20111.0 * cos(
+        val lat = center.latitude + (random.nextDouble() * 2 - 1) * (radius / 50000.0)
+        val lng = center.longitude + (random.nextDouble() * 2 - 1) * (radius / (50000.0 * cos(
             Math.toRadians(center.latitude)
         )))
         return LatLng(lat, lng)
+    }
+
+    private fun calculateDistance(location1: LatLng, location2: LatLng): Float {
+        val results = FloatArray(1)
+        android.location.Location.distanceBetween(
+            location1.latitude, location1.longitude,
+            location2.latitude, location2.longitude, results
+        )
+        return results[0]
+    }
+
+    private fun showConfirmationDialog(nearbyPointsCount: Int) {
+        val title = "Liczba potworów w promieniu 100m:"
+        val message = "$nearbyPointsCount"
+
+        val alertDialogBuilder = AlertDialog.Builder(this)
+        alertDialogBuilder.setTitle(title)
+        alertDialogBuilder.setMessage(message)
+        alertDialogBuilder.setPositiveButton("OK") { dialogInterface: DialogInterface, i: Int ->
+            // Tutaj możesz umieścić kod, który zostanie wykonany po naciśnięciu przycisku "OK"
+        }
+
+        val alertDialog = alertDialogBuilder.create()
+        alertDialog.show()
     }
 }
