@@ -20,8 +20,8 @@
 
     <TextView
         android:id="@+id/monsterCountTextView"
-        android:layout_width="40dp"
-    android:layout_height="40dp"
+        android:layout_width="300dp"
+    android:layout_height="50dp"
     android:layout_marginTop="16dp"
     android:layout_marginEnd="16dp"
     android:layout_alignParentEnd="true"
@@ -31,6 +31,23 @@
     android:gravity="center"
     android:text="0"
     android:textSize="18sp"
-    android:textStyle="bold" />
+    android:textStyle="bold"
+
+        />
+
+    <TextView
+        android:id="@+id/monsterCatchCountTextView"
+        android:layout_width="300dp"
+        android:layout_height="50dp"
+        android:layout_marginTop="80dp"
+        android:layout_marginEnd="16dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:background="#FFFFFF"
+        android:textColor="#000000"
+        android:gravity="center"
+        android:text="0"
+        android:textSize="18sp"
+        android:textStyle="bold" />
 
 </RelativeLayout>

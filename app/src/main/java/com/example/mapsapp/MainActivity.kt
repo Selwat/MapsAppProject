@@ -40,15 +40,23 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private val MONSTER_CHECK_INTERVAL = 10 * 1000
     private var permissionRequested = false
     private lateinit var monsterCountTextView: TextView
+    private lateinit var monsterCatchCountTextView: TextView
     private val capturedMonsters = mutableSetOf<Marker>()
+    private var monstersCaughtCount = 0
+
     private fun updateMonsterCountTextView(count: Int) {
-        monsterCountTextView.text = count.toString()
+        monsterCountTextView.text = "Liczba potworów w twojej okolicy: " + count.toString()
     }
+    private fun updateMonsterCountCatchTextView() {
+        monsterCatchCountTextView.text = "Złapane potwory: " + monstersCaughtCount.toString()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        monsterCatchCountTextView = findViewById(R.id.monsterCatchCountTextView)
         monsterCountTextView = findViewById(R.id.monsterCountTextView)
         val mapFragment =
             supportFragmentManager.findFragmentById(R.id.mapFragment) as SupportMapFragment
@@ -57,13 +65,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         // Ustawienia do żądania lokalizacji
         locationRequest = LocationRequest.create()
             .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-            .setInterval(10000) // 10 sekund
-            .setFastestInterval(10000) // 10 sekund
+            .setInterval(10000) // 1 sekund
+            .setFastestInterval(10000) // 1 sekund
 
 
         fixedRateTimer("CheckMonsters", false, 0, MONSTER_CHECK_INTERVAL.toLong()) {
             runOnUiThread {
                 checkMonsters()
+
             }
         }
 
@@ -88,7 +97,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         }
 
-
+        checkMonsters()
         // Rozpocznij aktualizacje lokalizacji
         startLocationUpdates()
     }
@@ -163,7 +172,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private fun generateMonsters(center: LatLng) {
         val nearbyPoints = mutableListOf<LatLng>()
         updateMonsterCountTextView(nearbyPoints.size)
-
+        updateMonsterCountCatchTextView()
         repeat(10) {
             val randomLocation = generateRandomLocationNearby(center, 500.0)
             val marker = mGoogleMap?.addMarker(MarkerOptions().position(randomLocation).title("Point $it"))
@@ -229,7 +238,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
 
     private fun showCatchMonsterDialog(monsterMarker: Marker) {
-        val title = "Potwór " + monsterMarker.title +" w zasięgu!"
+        val title = "Potwór " + monsterMarker.title + " w zasięgu!"
         val message = "Czy chcesz złapać potwora w odległości 300 metrów?"
 
         val alertDialogBuilder = AlertDialog.Builder(this)
@@ -241,11 +250,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
             // Remove the monster marker from the markers list
             markers.remove(monsterMarker)
-
+            monstersCaughtCount++
             // Update the monster count TextView
+            updateMonsterCountCatchTextView()
+            updateMonsterCountTextView(markers.size)
 
         }
-        updateMonsterCountTextView(markers.size)
+
         alertDialogBuilder.setNegativeButton("Nie") { dialogInterface: DialogInterface, i: Int ->
             // Handle the case when the player chooses not to catch the monster
         }
