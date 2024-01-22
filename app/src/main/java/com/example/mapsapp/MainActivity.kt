@@ -179,8 +179,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         return results[0]
     }
 
-    private fun showConfirmationDialog(nearbyPointsCount: Int) {
-        val title = "Liczba potworów w promieniu 100m:"
+    private fun catchMonster(nearbyPointsCount: Int) {
+        val title = "Liczba potworów w promieniu 50m:"
         val message = "$nearbyPointsCount"
 
         val alertDialogBuilder = AlertDialog.Builder(this)
@@ -194,6 +194,22 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         alertDialog.show()
     }
 
+
+//    private fun showConfirmationDialog(nearbyPointsCount: Int) {
+//        val title = "Liczba potworów w promieniu 100m:"
+//        val message = "$nearbyPointsCount"
+//
+//        val alertDialogBuilder = AlertDialog.Builder(this)
+//        alertDialogBuilder.setTitle(title)
+//        alertDialogBuilder.setMessage(message)
+//        alertDialogBuilder.setPositiveButton("OK") { dialogInterface: DialogInterface, i: Int ->
+//            // Tutaj dodajemy 1 pkt
+//        }
+//
+//        val alertDialog = alertDialogBuilder.create()
+//        alertDialog.show()
+//    }
+
     private fun checkMonsters() {
         if (ContextCompat.checkSelfPermission(
                 this,
@@ -204,13 +220,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 currentLocation?.let {
                     val currentLatLng = LatLng(currentLocation.latitude, currentLocation.longitude)
 
-                    val nearbyMonsters = markers.count { marker ->
+                    val nearbyMonsters = markers.filter { marker ->
                         val distance = calculateDistance(currentLatLng, marker.position)
                         distance < 600
                     }
 
                     runOnUiThread {
-                        showConfirmationDialog(nearbyMonsters)
+                        for (monsterMarker in nearbyMonsters) {
+                            val distance = calculateDistance(currentLatLng, monsterMarker.position)
+                            if (distance < 300) {
+                                showCatchMonsterDialog(monsterMarker)
+                            }
+                        }
                     }
                 }
             }
@@ -225,4 +246,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         }
     }
+
+    private fun showCatchMonsterDialog(monsterMarker: Marker) {
+        val title = "Potwór w zasięgu!"
+        val message = "Czy chcesz złapać potwora w odległości 300 metrów?"
+
+        val alertDialogBuilder = AlertDialog.Builder(this)
+        alertDialogBuilder.setTitle(title)
+        alertDialogBuilder.setMessage(message)
+        alertDialogBuilder.setPositiveButton("Tak") { dialogInterface: DialogInterface, i: Int ->
+            // Tutaj dodaj logikę związana z złapaniem potwora
+            // np. usunięcie potwora z mapy
+            monsterMarker.remove()
+        }
+        alertDialogBuilder.setNegativeButton("Nie") { dialogInterface: DialogInterface, i: Int ->
+            // Tutaj można dodać dodatkową logikę, jeśli gracz nie chce łapać potwora
+        }
+
+        val alertDialog = alertDialogBuilder.create()
+        alertDialog.show()
+    }
+
 }
