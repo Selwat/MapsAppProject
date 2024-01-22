@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -36,14 +37,19 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private val markers = mutableListOf<Marker>()
     private var lastMonsterGenerationTime: Long = 0
     private val MONSTER_GENERATION_INTERVAL = 10 * 60 * 1000 // 10 minut w milisekundach
+    private val MONSTER_CHECK_INTERVAL = 10 * 1000
     private var permissionRequested = false
-
+    private lateinit var monsterCountTextView: TextView
+    private val capturedMonsters = mutableSetOf<Marker>()
+    private fun updateMonsterCountTextView(count: Int) {
+        monsterCountTextView.text = count.toString()
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
+        monsterCountTextView = findViewById(R.id.monsterCountTextView)
         val mapFragment =
             supportFragmentManager.findFragmentById(R.id.mapFragment) as SupportMapFragment
         mapFragment.getMapAsync(this)
@@ -54,8 +60,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             .setInterval(10000) // 10 sekund
             .setFastestInterval(10000) // 10 sekund
 
-        // Uruchomienie zadania sprawdzania co 15 sekund
-        fixedRateTimer("CheckMonsters", false, 0, 15 * 1000) {
+
+        fixedRateTimer("CheckMonsters", false, 0, MONSTER_CHECK_INTERVAL.toLong()) {
             runOnUiThread {
                 checkMonsters()
             }
@@ -120,6 +126,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun updateMapLocation(latLng: LatLng) {
+
         // Aktualizuj mapę z nową lokalizac
         mGoogleMap?.addMarker(MarkerOptions().position(latLng).title("My Location"))
         mGoogleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
@@ -155,6 +162,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
     private fun generateMonsters(center: LatLng) {
         val nearbyPoints = mutableListOf<LatLng>()
+        updateMonsterCountTextView(nearbyPoints.size)
 
         repeat(10) {
             val randomLocation = generateRandomLocationNearby(center, 500.0)
@@ -179,36 +187,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         return results[0]
     }
 
-    private fun catchMonster(nearbyPointsCount: Int) {
-        val title = "Liczba potworów w promieniu 50m:"
-        val message = "$nearbyPointsCount"
 
-        val alertDialogBuilder = AlertDialog.Builder(this)
-        alertDialogBuilder.setTitle(title)
-        alertDialogBuilder.setMessage(message)
-        alertDialogBuilder.setPositiveButton("OK") { dialogInterface: DialogInterface, i: Int ->
-            // Tutaj dodajemy 1 pkt
-        }
-
-        val alertDialog = alertDialogBuilder.create()
-        alertDialog.show()
-    }
-
-
-//    private fun showConfirmationDialog(nearbyPointsCount: Int) {
-//        val title = "Liczba potworów w promieniu 100m:"
-//        val message = "$nearbyPointsCount"
-//
-//        val alertDialogBuilder = AlertDialog.Builder(this)
-//        alertDialogBuilder.setTitle(title)
-//        alertDialogBuilder.setMessage(message)
-//        alertDialogBuilder.setPositiveButton("OK") { dialogInterface: DialogInterface, i: Int ->
-//            // Tutaj dodajemy 1 pkt
-//        }
-//
-//        val alertDialog = alertDialogBuilder.create()
-//        alertDialog.show()
-//    }
 
     private fun checkMonsters() {
         if (ContextCompat.checkSelfPermission(
@@ -220,9 +199,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 currentLocation?.let {
                     val currentLatLng = LatLng(currentLocation.latitude, currentLocation.longitude)
 
+                    // Filter out markers with the title "My Location"
                     val nearbyMonsters = markers.filter { marker ->
-                        val distance = calculateDistance(currentLatLng, marker.position)
-                        distance < 600
+                        marker.title != "My Location" && calculateDistance(currentLatLng, marker.position) < 600
                     }
 
                     runOnUiThread {
@@ -232,6 +211,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                                 showCatchMonsterDialog(monsterMarker)
                             }
                         }
+                        updateMonsterCountTextView(nearbyMonsters.size)
                     }
                 }
             }
@@ -247,24 +227,32 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+
     private fun showCatchMonsterDialog(monsterMarker: Marker) {
-        val title = "Potwór w zasięgu!"
+        val title = "Potwór " + monsterMarker.title +" w zasięgu!"
         val message = "Czy chcesz złapać potwora w odległości 300 metrów?"
 
         val alertDialogBuilder = AlertDialog.Builder(this)
         alertDialogBuilder.setTitle(title)
         alertDialogBuilder.setMessage(message)
         alertDialogBuilder.setPositiveButton("Tak") { dialogInterface: DialogInterface, i: Int ->
-            // Tutaj dodaj logikę związana z złapaniem potwora
-            // np. usunięcie potwora z mapy
+            // Remove the monster marker from the map
             monsterMarker.remove()
+
+            // Remove the monster marker from the markers list
+            markers.remove(monsterMarker)
+
+            // Update the monster count TextView
+
         }
+        updateMonsterCountTextView(markers.size)
         alertDialogBuilder.setNegativeButton("Nie") { dialogInterface: DialogInterface, i: Int ->
-            // Tutaj można dodać dodatkową logikę, jeśli gracz nie chce łapać potwora
+            // Handle the case when the player chooses not to catch the monster
         }
 
         val alertDialog = alertDialogBuilder.create()
         alertDialog.show()
     }
+
 
 }
