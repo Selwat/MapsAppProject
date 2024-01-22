@@ -41,6 +41,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private var permissionRequested = false
     private lateinit var monsterCountTextView: TextView
     private val capturedMonsters = mutableSetOf<Marker>()
+    private var score = 0
+
     private fun updateMonsterCountTextView(count: Int) {
         monsterCountTextView.text = count.toString()
     }
@@ -229,7 +231,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
 
     private fun showCatchMonsterDialog(monsterMarker: Marker) {
-        val title = "Potwór " + monsterMarker.title +" w zasięgu!"
+        val title = "Potwór " + monsterMarker.title + " w zasięgu!"
         val message = "Czy chcesz złapać potwora w odległości 300 metrów?"
 
         val alertDialogBuilder = AlertDialog.Builder(this)
@@ -243,15 +245,24 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             markers.remove(monsterMarker)
 
             // Update the monster count TextView
+            updateMonsterCountTextView(markers.size)
 
+            // Increase the score and update the score TextView
+            score++
+            updateScoreTextView(score)
         }
-        updateMonsterCountTextView(markers.size)
+
         alertDialogBuilder.setNegativeButton("Nie") { dialogInterface: DialogInterface, i: Int ->
             // Handle the case when the player chooses not to catch the monster
         }
 
         val alertDialog = alertDialogBuilder.create()
         alertDialog.show()
+    }
+
+    private fun updateScoreTextView(score: Int) {
+        val scoreTextView = findViewById<TextView>(R.id.scoreTextView)
+        scoreTextView.text = score.toString()
     }
 
 
